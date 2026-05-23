@@ -1,3 +1,65 @@
-- import_tasks: install.yml
-- import_tasks: config.yml
-- import_tasks: service.yml
+- name: Create prometheus user
+  user:
+    name: prometheus
+    system: true
+    shell: /bin/false
+
+- name: Create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: "0755"
+  loop:
+    - /opt/prometheus
+    - /var/lib/prometheus
+    - /etc/prometheus
+
+- name: Download Prometheus
+  get_url:
+    url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    dest: /tmp/prometheus.tar.gz
+
+- name: Extract Prometheus
+  unarchive:
+    src: /tmp/prometheus.tar.gz
+    dest: /opt/prometheus
+    remote_src: yes
+    extra_opts: [--strip-components=1]
+
+- name: Copy binaries
+  copy:
+    src: "/opt/prometheus/prometheus"
+    dest: /usr/local/bin/prometheus"
+    mode: "0755"
+    remote_src: yes
+
+- name: Create config file
+  template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: prometheus
+    group: prometheus
+
+- name: Create alert rules
+  template:
+    src: alert_rules.yml.j2
+    dest: /etc/prometheus/alert_rules.yml
+    owner: prometheus
+    group: prometheus
+
+- name: Create systemd service
+  template:
+    src: prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: true
+
+- name: Enable and start Prometheus
+  systemd:
+    name: prometheus
+    enabled: true
+    state: started
