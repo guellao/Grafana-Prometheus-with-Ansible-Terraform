@@ -1,0 +1,4 @@
+prometheus_version: "2.54.1"
+prometheus_user: prometheus
+prometheus_dir: /opt/prometheus
+prometheus_data_dir: /var/lib/prometheus
